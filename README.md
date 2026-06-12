@@ -1,0 +1,2 @@
+# FinFIn
+Daily New Digestion
