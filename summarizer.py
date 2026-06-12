@@ -1,5 +1,7 @@
 import os
+import time
 from google import genai
+from google.genai import errors as genai_errors
 from typing import List, Dict
 
 PROMPT_TEMPLATE = """คุณคือ Financial News Analyst ผู้เชี่ยวชาญด้านการลงทุน
@@ -45,20 +47,25 @@ def summarize_news(articles: List[Dict], max_retries: int = 2) -> str:
     news_block = _build_news_block(articles)
 
     for attempt in range(max_retries + 1):
-        # ใช้ retry prompt ถ้าเป็นการลองซ้ำ
-        template = RETRY_PROMPT_TEMPLATE if attempt > 0 else PROMPT_TEMPLATE
-        prompt = template.format(news_block=news_block)
+        try:
+            template = RETRY_PROMPT_TEMPLATE if attempt > 0 else PROMPT_TEMPLATE
+            prompt = template.format(news_block=news_block)
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
-        text = response.text or ""
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+            )
+            text = response.text or ""
 
-        # Decision: ถ้าสรุปยาวพอ → ใช้ได้
-        if len(text) >= 100:
-            return text
+            if len(text) >= 100:
+                return text
 
-        print(f"[summarizer] Response too short ({len(text)} chars), retrying ({attempt + 1}/{max_retries})...")
+            print(f"[summarizer] Response too short ({len(text)} chars), retrying ({attempt + 1}/{max_retries})...")
+
+        except genai_errors.ServerError as e:
+            wait = 10 * (attempt + 1)  # 10s, 20s, 30s
+            print(f"[summarizer] Server error ({e}), retrying in {wait}s ({attempt + 1}/{max_retries})...")
+            if attempt < max_retries:
+                time.sleep(wait)
 
     return text  # return best effort
