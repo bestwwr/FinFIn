@@ -25,7 +25,8 @@ def run_morning_digest() -> None:
 
     # --- Summarizer Agent ---
     print("  [2/3] Summarizing with Gemini...")
-    summary = summarize_news(articles)
+    digest_date = datetime.now().strftime("%d %b %Y")
+    summary = summarize_news(articles, digest_date=digest_date)
 
     if not summary:
         print("  [decision] Summary empty → aborting.")
