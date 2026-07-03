@@ -58,7 +58,7 @@ In GitHub Actions these are stored as repository secrets (Settings → Secrets �
 
 ## Deployment
 
-Runs automatically every day at **08:00 Bangkok time (01:00 UTC)** via `.github/workflows/morning-digest.yml`. Can also be triggered manually from the Actions tab or via `gh workflow run`.
+Runs automatically every day at **~07:37 Bangkok time (00:37 UTC)** via `.github/workflows/morning-digest.yml`. The off-peak minute (avoiding `:00`) is intentional — GitHub Actions queues on-the-hour schedules heavily, which was causing multi-hour delivery delays. Can also be triggered manually from the Actions tab or via `gh workflow run`.
 
 Local cronjob (backup) is set at `0 8 * * *` using the venv Python binary directly.
 
