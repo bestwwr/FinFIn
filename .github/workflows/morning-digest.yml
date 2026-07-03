@@ -2,7 +2,7 @@ name: FinFin Morning Digest
 
 on:
   schedule:
-    - cron: "37 0 * * *"  # ~07:37 Bangkok (UTC+7) — off-peak minute to avoid GitHub Actions queue delays
+    - cron: "0 1 * * *"  # 08:00 Bangkok (UTC+7) — exact target time; GitHub Actions may queue/delay this popular top-of-hour slot
   workflow_dispatch:      # รันด้วยมือได้จาก GitHub UI
 
 jobs:
