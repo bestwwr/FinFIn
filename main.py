@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from fetcher import fetch_news
 from summarizer import summarize_news
 from notifier import send_notification
+from stock_fetcher import build_stock_snapshot
 
 load_dotenv()
 
@@ -34,8 +35,13 @@ def run_morning_digest() -> None:
 
     print(f"  [decision] Summary ready ({len(summary)} chars) → sending.")
 
+    # --- Stock Snapshot ---
+    print("  [2.5/3] Fetching US stock snapshot...")
+    stock_snapshot = build_stock_snapshot()
+
     # --- Notifier Agent ---
     print("  [3/3] Sending to Telegram...")
+    send_notification(stock_snapshot)
     ok = send_notification(summary)
 
     if ok:
