@@ -35,15 +35,17 @@ FinFin is a **Basic Agent** (not a simple pipeline) — each step has its own de
 
 ```
 main.py (orchestrator)
-  → fetcher.py     fetch_news()       → List[Dict]
-  → summarizer.py  summarize_news()   → str
+  → subscribers.py sync_subscribers()  → List[str]
+  → fetcher.py     fetch_news()        → List[Dict]
+  → summarizer.py  summarize_news()    → str
   → notifier.py    send_notification() → bool
 ```
 
 **Key design decisions:**
+- `subscribers.py` polls Telegram's `getUpdates` for anyone who has messaged the bot (e.g. pressed Start) and auto-adds their chat ID to `subscribers.json`. `TELEGRAM_CHAT_ID` (the owner) is always merged in too, so the original recipient never depends on the file. The digest is sent to every chat in the resulting list — no manual chat-ID collection needed.
 - `fetcher.py` has 5 primary RSS feeds and 2 fallback feeds. If primary feeds return fewer than `min_articles`, fallback feeds are tried automatically.
 - `summarizer.py` uses `gemini-2.5-flash`. It retries up to 2 times if the response is under 100 chars, and handles `503 ServerError` with a 10s/20s/30s backoff.
-- `notifier.py` sends to Telegram (function is named `send_notification`). Retries 3 times with exponential backoff (1s/2s/4s) on failure.
+- `notifier.py` sends to Telegram (function is named `send_notification`) for each chat ID passed to it. Retries 3 times with exponential backoff (1s/2s/4s) per chat on failure.
 - Decision points are logged with `[decision]` prefix for easy tracing.
 
 ## Environment Variables
@@ -51,10 +53,14 @@ main.py (orchestrator)
 ```
 GEMINI_API_KEY=        # Google AI Studio — must be from a project with free tier quota
 TELEGRAM_BOT_TOKEN=    # from @BotFather
-TELEGRAM_CHAT_ID=      # from @userinfobot
+TELEGRAM_CHAT_ID=      # from @userinfobot — owner's id(s); comma-separated for more than one, e.g. 111111,222222
 ```
 
 In GitHub Actions these are stored as repository secrets (Settings → Secrets → Actions).
+
+## Subscribers (`subscribers.json`)
+
+Tracks who receives the digest: `{"chat_ids": [...], "last_update_id": <int>}`. Anyone who messages the bot in Telegram gets auto-added on the next run via `sync_subscribers()`. The GitHub Actions workflow commits this file back to the repo after each run (`Persist subscriber list` step) so new subscribers stick — this requires `permissions: contents: write` on the workflow.
 
 ## Deployment
 

@@ -12,6 +12,12 @@ FinFin เป็น Basic Agent ที่ดึงข่าวการลงท
 START
   │
   ▼
+[Subscriber Sync] ── subscribers.py
+  ├─ poll Telegram getUpdates() หา chat ที่เคยทักบอท
+  ├─ [decision] chat ใหม่ → เพิ่มเข้า subscribers.json อัตโนมัติ
+  └─ ถ้าไม่มี subscriber เลย → หยุด (ไม่มีคนรับข่าว)
+  │
+  ▼
 [Fetcher Agent] ── fetcher.py
   ├─ ดึงข่าวจาก 5 primary RSS feeds
   ├─ [decision] ถ้าได้ข่าวน้อยกว่า 5 → ลอง 2 fallback feeds
@@ -37,6 +43,15 @@ END
 ---
 
 ## Agents
+
+### 0. Subscriber Sync (`subscribers.py`)
+| | |
+|---|---|
+| **Role** | ดูว่าใครทักบอทมาบ้าง แล้วเพิ่มเป็นผู้รับข่าวอัตโนมัติ |
+| **Input** | Telegram `getUpdates` (offset จาก `last_update_id` เดิม) + `TELEGRAM_CHAT_ID` (owner) |
+| **Output** | `List[str]` — chat_ids ทั้งหมดที่จะส่งข่าวให้ |
+| **Decision** | chat_id ใหม่ที่ยังไม่มีใน `subscribers.json` → เพิ่มเข้าไป |
+| **Storage** | `subscribers.json` — commit กลับเข้า repo ทุกครั้งที่รันผ่าน GitHub Actions (`Persist subscriber list` step) |
 
 ### 1. Fetcher Agent (`fetcher.py`)
 | | |
