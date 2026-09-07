@@ -6,38 +6,38 @@ from google.genai import errors as genai_errors
 from typing import List, Dict
 
 # ──────────────────────────────────────────────────────────────────────────────
-# System instruction: แยก "บทบาท" ออกจาก "งาน"
-# โมเดลให้น้ำหนัก system_instruction มากกว่าข้อความปกติ
-# และทำให้ prompt หลักสั้น สะอาด ปรับง่าย
+# System instruction: separates "role" from "task".
+# The model weighs system_instruction more heavily than the main prompt,
+# and it keeps the main prompt short, clean, and easy to adjust.
 # ──────────────────────────────────────────────────────────────────────────────
-SYSTEM_INSTRUCTION = """คุณคือนักวิเคราะห์ข่าวการลงทุนมืออาชีพ เขียนสรุปข่าวเช้าให้นักลงทุนไทยอ่านภายใน 1 นาที
+SYSTEM_INSTRUCTION = """You are a professional investment news analyst. Write a morning digest that an investor can read in under 1 minute.
 
-หลักการเขียนที่ต้องทำตามเสมอ:
-- คัดเฉพาะข่าวที่ "มีผลต่อการตัดสินใจลงทุน" ทิ้งข่าวที่เป็น noise
-- จัดกลุ่มข่าวที่เกี่ยวข้องกันเข้าด้วยกัน อย่าแยกเป็นรายข่าว
-- แต่ละ bullet ยาวไม่เกิน 1 บรรทัด ขึ้นต้นด้วย "ผลกระทบ" ไม่ใช่ชื่อข่าว
-- ใส่ตัวเลข/เปอร์เซ็นต์/ทิศทาง (▲▼) เมื่อมีข้อมูล
-- ภาษากระชับ ตรงประเด็น ไม่ใช้คำฟุ่มเฟือย
-- ห้ามแนะนำซื้อ/ขาย แค่วิเคราะห์ข้อเท็จจริง"""
+Writing principles you must always follow:
+- Only include news that "affects investment decisions" — drop noise.
+- Group related news together instead of listing items one by one.
+- Each bullet is at most 1 line and leads with the "impact", not the headline.
+- Include numbers/percentages/direction (▲▼) whenever the data is available.
+- Be concise and to the point — no filler words.
+- Never recommend buying/selling — analyze facts only."""
 
-PROMPT_TEMPLATE = """สรุปข่าวการลงทุนประจำ{date} จากข้อมูลต่อไปนี้:
+PROMPT_TEMPLATE = """Summarize the investment news for {date} from the following data:
 
 {news_block}
 
-รูปแบบที่ต้องการ (ไม่เกิน 900 ตัวอักษร):
+Required format (max 900 characters):
 
 🌅 FinFin Morning Digest — {date}
 
-📌 ประเด็นที่กระทบพอร์ต:
+📌 Portfolio-impacting headlines:
 - ...
 
-📈 สัญญาณตลาด:
+📈 Market signals:
 - ...
 
-⚠️ ความเสี่ยงที่ต้องจับตา:
+⚠️ Risks to watch:
 - ...
 
-💡 ภาพรวม:
+💡 Overview:
 ..."""
 
 
@@ -46,9 +46,9 @@ def _build_news_block(articles: List[Dict]) -> str:
     for i, a in enumerate(articles, 1):
         lines.append(f"{i}. [{a['source']}] {a['title']}")
         if a.get("published"):
-            lines.append(f"   เวลา: {a['published']}")
+            lines.append(f"   Time: {a['published']}")
         if a.get("summary"):
-            lines.append(f"   เนื้อหา: {a['summary'][:400]}")
+            lines.append(f"   Content: {a['summary'][:400]}")
     return "\n".join(lines)
 
 
@@ -76,7 +76,7 @@ def summarize_news(
         try:
             prompt = PROMPT_TEMPLATE.format(
                 news_block=news_block,
-                date=digest_date or "วันนี้",
+                date=digest_date or "today",
             )
 
             response = client.models.generate_content(

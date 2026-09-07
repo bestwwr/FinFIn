@@ -28,7 +28,7 @@ def run_morning_digest() -> None:
 
     if not articles:
         print("  [decision] No articles found → sending warning.")
-        send_notification("⚠️ FinFin: ไม่พบข่าวการลงทุนในช่วง 18 ชั่วโมงที่ผ่านมา", chat_ids=chat_ids)
+        send_notification("⚠️ FinFin: No investment news found in the past 18 hours.", chat_ids=chat_ids)
         return
 
     print(f"  [decision] Got {len(articles)} articles → proceeding to summarize.")

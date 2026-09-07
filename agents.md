@@ -26,7 +26,7 @@ START
   ▼
 [Summarizer Agent] ── summarizer.py
   ├─ คิดก่อนตอบด้วย thinking_budget=2048
-  ├─ ส่งข่าวให้ Gemini 2.5-flash วิเคราะห์เป็นภาษาไทย
+  ├─ ส่งข่าวให้ Gemini 2.5-flash วิเคราะห์เป็นภาษาอังกฤษ
   ├─ [decision] ถ้าสรุปสั้นกว่า 100 ตัวอักษร หรือไม่มี 📌 → retry
   └─ retry ได้สูงสุด 2 ครั้ง (server error: backoff 10s/20s/30s)
   │
@@ -66,9 +66,9 @@ END
 ### 2. Summarizer Agent (`summarizer.py`)
 | | |
 |---|---|
-| **Role** | วิเคราะห์และสรุปข่าวเป็นภาษาไทยด้วย Gemini |
+| **Role** | วิเคราะห์และสรุปข่าวเป็นภาษาอังกฤษด้วย Gemini |
 | **Input** | `List[Dict]` articles, `str` digest_date |
-| **Output** | `str` — Thai-language digest พร้อมวันที่ |
+| **Output** | `str` — English-language digest พร้อมวันที่ |
 | **Model** | gemini-2.5-flash |
 | **System Instruction** | แยก "บทบาทนักวิเคราะห์" ออกจาก prompt หลัก |
 | **Thinking Budget** | 2048 tokens — โมเดลคิดก่อนตอบ |
