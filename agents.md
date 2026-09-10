@@ -26,15 +26,17 @@ START
   ▼
 [Summarizer Agent] ── summarizer.py
   ├─ คิดก่อนตอบด้วย thinking_budget=2048
-  ├─ ส่งข่าวให้ Gemini 2.5-flash วิเคราะห์เป็นภาษาอังกฤษ
-  ├─ [decision] ถ้าสรุปสั้นกว่า 100 ตัวอักษร หรือไม่มี 📌 → retry
+  ├─ ส่งข่าวให้ Gemini 2.5-flash แยกประเภท + สรุปเป็น JSON (response_schema=DigestOutput)
+  │    → { thailand: str, global_markets: str }
+  ├─ [decision] ถ้าความยาวรวมสั้นกว่า 100 ตัวอักษร → retry
   └─ retry ได้สูงสุด 2 ครั้ง (server error: backoff 10s/20s/30s)
   │
   ▼
 [Notifier Agent] ── notifier.py
-  ├─ ส่งสรุปไปยัง Telegram
+  ├─ ส่ง 2 ข้อความแยกกันไปยัง Telegram: Thailand digest ก่อน แล้วตามด้วย Global digest
+  │    (ข้ามฝั่งไหนที่ไม่มีข่าววันนั้น)
   ├─ [decision] ถ้าล้มเหลว → retry พร้อม exponential backoff (1s / 2s / 4s)
-  └─ retry ได้สูงสุด 3 ครั้ง
+  └─ retry ได้สูงสุด 3 ครั้งต่อข้อความ
   │
   ▼
 END
@@ -66,27 +68,28 @@ END
 ### 2. Summarizer Agent (`summarizer.py`)
 | | |
 |---|---|
-| **Role** | วิเคราะห์และสรุปข่าวเป็นภาษาอังกฤษด้วย Gemini |
+| **Role** | แยกข่าวเป็น Thailand vs Global แล้วสรุปเป็นภาษาอังกฤษด้วย Gemini |
 | **Input** | `List[Dict]` articles, `str` digest_date |
-| **Output** | `str` — English-language digest พร้อมวันที่ |
+| **Output** | `Dict[str, str]` — `{"thailand": ..., "global": ...}`, ทั้งสองเป็น English-language digest พร้อมวันที่ |
 | **Model** | gemini-2.5-flash |
-| **System Instruction** | แยก "บทบาทนักวิเคราะห์" ออกจาก prompt หลัก |
+| **System Instruction** | แยก "บทบาทนักวิเคราะห์" + เกณฑ์จัดหมวด Thailand/Global ออกจาก prompt หลัก |
+| **Structured Output** | `response_schema=DigestOutput` (pydantic) บังคับ JSON `{thailand, global_markets}` |
 | **Thinking Budget** | 2048 tokens — โมเดลคิดก่อนตอบ |
 | **Temperature** | 0.3 — output สม่ำเสมอ เหมาะกับงานข่าว |
 | **Max Output Tokens** | 4096 |
-| **Decision (quality)** | ถ้า response < 100 chars หรือไม่มี `📌` → retry |
+| **Decision (quality)** | ถ้าความยาวรวมของทั้งสองฝั่ง < 100 ตัวอักษร → retry |
 | **Decision (server error)** | 503 ServerError → backoff 10s/20s/30s แล้ว retry |
 | **Max Retries** | 2 |
 
 ### 3. Notifier Agent (`notifier.py`)
 | | |
 |---|---|
-| **Role** | ส่งสรุปข่าวไปยัง Telegram |
-| **Input** | `str` message |
+| **Role** | ส่งสรุปข่าวไปยัง Telegram เป็น 2 ข้อความแยกกัน (Thailand, Global) |
+| **Input** | `str` message (เรียก 2 ครั้งต่อรอบ ครั้งละ 1 digest — ข้ามฝั่งที่ว่าง) |
 | **Output** | `bool` success/failure |
 | **Decision** | ถ้าส่งไม่สำเร็จ → retry พร้อม exponential backoff |
 | **Platform** | Telegram Bot API |
-| **Max Retries** | 3 (backoff: 1s / 2s / 4s) |
+| **Max Retries** | 3 ต่อข้อความ (backoff: 1s / 2s / 4s) |
 
 ---
 

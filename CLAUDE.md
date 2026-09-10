@@ -44,8 +44,8 @@ main.py (orchestrator)
 **Key design decisions:**
 - `subscribers.py` polls Telegram's `getUpdates` for anyone who has messaged the bot (e.g. pressed Start) and auto-adds their chat ID to `subscribers.json`. `TELEGRAM_CHAT_ID` (the owner) is always merged in too, so the original recipient never depends on the file. The digest is sent to every chat in the resulting list — no manual chat-ID collection needed.
 - `fetcher.py` has 5 primary RSS feeds and 2 fallback feeds. If primary feeds return fewer than `min_articles`, fallback feeds are tried automatically.
-- `summarizer.py` uses `gemini-2.5-flash`. It retries up to 2 times if the response is under 100 chars, and handles `503 ServerError` with a 10s/20s/30s backoff.
-- `notifier.py` sends to Telegram (function is named `send_notification`) for each chat ID passed to it. Retries 3 times with exponential backoff (1s/2s/4s) per chat on failure.
+- `summarizer.py` uses `gemini-2.5-flash` with structured JSON output (`response_schema=DigestOutput`) to classify articles and produce **two separate digests in one call**: Thailand-specific (SET, THB, BOT policy, Thai-listed companies) and Global (everything else relevant to a diversified portfolio). It retries up to 2 times if the combined response is under 100 chars, and handles `503 ServerError` with a 10s/20s/30s backoff.
+- `notifier.py` sends to Telegram (function is named `send_notification`) for each chat ID passed to it. Retries 3 times with exponential backoff (1s/2s/4s) per chat on failure. `main.py` calls it once per digest section, so each subscriber gets **2 separate Telegram messages/bubbles** — Thailand first, then Global (a section is skipped if empty that day).
 - Decision points are logged with `[decision]` prefix for easy tracing.
 
 ## Environment Variables

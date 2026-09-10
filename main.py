@@ -37,16 +37,29 @@ def run_morning_digest() -> None:
     print("  [2/3] Summarizing with Gemini...")
     digest_date = datetime.now().strftime("%d %b %Y")
     summary = summarize_news(articles, digest_date=digest_date)
+    thailand_digest = summary.get("thailand", "").strip()
+    global_digest = summary.get("global", "").strip()
 
-    if not summary:
+    if not thailand_digest and not global_digest:
         print("  [decision] Summary empty → aborting.")
         return
 
-    print(f"  [decision] Summary ready ({len(summary)} chars) → sending.")
+    print(
+        f"  [decision] Summary ready (Thailand {len(thailand_digest)} chars, "
+        f"Global {len(global_digest)} chars) → sending."
+    )
 
-    # --- Notifier Agent ---
+    # --- Notifier Agent --- (2 separate bubble messages: Thailand, then Global)
     print("  [3/3] Sending to Telegram...")
-    ok = send_notification(summary, chat_ids=chat_ids)
+    ok = True
+    if thailand_digest:
+        ok = send_notification(thailand_digest, chat_ids=chat_ids) and ok
+    else:
+        print("  [decision] No Thailand digest → skipping that bubble.")
+    if global_digest:
+        ok = send_notification(global_digest, chat_ids=chat_ids) and ok
+    else:
+        print("  [decision] No Global digest → skipping that bubble.")
 
     if ok:
         print("  Done! Digest sent successfully.")
