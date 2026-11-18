@@ -36,7 +36,12 @@ def run_morning_digest() -> None:
     # --- Summarizer Agent ---
     print("  [2/3] Summarizing with Gemini...")
     digest_date = datetime.now().strftime("%d %b %Y")
-    summary = summarize_news(articles, digest_date=digest_date)
+    try:
+        summary = summarize_news(articles, digest_date=digest_date)
+    except Exception as e:
+        print(f"  [decision] Summarizer crashed ({e}) → sending warning.")
+        send_notification(f"⚠️ FinFin: summarizer failed today — {type(e).__name__}. Check GitHub Actions logs.", chat_ids=chat_ids)
+        raise
     thailand_digest = summary.get("thailand", "").strip()
     global_digest = summary.get("global", "").strip()
 

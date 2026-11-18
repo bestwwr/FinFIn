@@ -68,7 +68,11 @@ def summarize_news(
     digest_date: str = "",
     max_retries: int = 2,
 ) -> Dict[str, str]:
-    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    # google-genai 3.x defaults to the stable v1 API, which rejects system_instruction.
+    client = genai.Client(
+        api_key=os.environ["GEMINI_API_KEY"],
+        http_options=types.HttpOptions(api_version="v1beta"),
+    )
     news_block = _build_news_block(articles)
 
     # ──────────────────────────────────────────────────────────────────────────
