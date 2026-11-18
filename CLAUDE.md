@@ -64,9 +64,7 @@ Tracks who receives the digest: `{"chat_ids": [...], "last_update_id": <int>}`. 
 
 ## Deployment
 
-Runs automatically every day at **08:00 Bangkok time (01:00 UTC)** via `.github/workflows/morning-digest.yml`. Can also be triggered manually from the Actions tab or via `gh workflow run`.
-
-Local cronjob (backup) is set at `0 8 * * *` using the venv Python binary directly.
+Runs automatically every morning via `.github/workflows/morning-digest.yml`. GitHub delays scheduled runs by hours, so the workflow triggers hourly from 02:23 to 08:23 Bangkok, and the `Check send window` step lets only the first run at or after **07:30 Bangkok** send. `last_sent.txt` (committed back by the workflow) records the Bangkok date of the last send so later runs that day skip. Manual runs (Actions tab or `gh workflow run`) always send.
 
 ## Roadmap (Level 2)
 

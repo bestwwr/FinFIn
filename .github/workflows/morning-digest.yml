@@ -2,11 +2,19 @@ name: FinFin Morning Digest
 
 on:
   schedule:
-    - cron: "0 1 * * *"  # 08:00 Bangkok (UTC+7)
+    # GitHub delays scheduled runs by hours, so we trigger hourly from 02:23 to
+    # 08:23 Bangkok. The "Check send window" step lets only the first run at or
+    # after 07:30 Bangkok send the digest, once per day (tracked in last_sent.txt).
+    - cron: "23 19-23 * * *"  # 02:23–06:23 Bangkok (previous UTC day)
+    - cron: "23 0-1 * * *"    # 07:23–08:23 Bangkok
   workflow_dispatch:      # รันด้วยมือได้จาก GitHub UI
 
 permissions:
   contents: write
+
+concurrency:
+  group: morning-digest
+  cancel-in-progress: false
 
 jobs:
   digest:
@@ -17,30 +25,58 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4.2.2
 
+      - name: Check send window
+        id: gate
+        run: |
+          today=$(TZ=Asia/Bangkok date +%F)
+          now=$(TZ=Asia/Bangkok date +%H%M)
+          last=$(cat last_sent.txt 2>/dev/null || echo none)
+          echo "Bangkok now: $today $now, last sent: $last"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run → sending."
+            echo "send=true" >> "$GITHUB_OUTPUT"
+          elif [ "$last" = "$today" ]; then
+            echo "Already sent today → skipping."
+            echo "send=false" >> "$GITHUB_OUTPUT"
+          elif [ "$now" -lt 0730 ]; then
+            echo "Before 07:30 Bangkok → skipping."
+            echo "send=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "send=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "today=$today" >> "$GITHUB_OUTPUT"
+
       - name: Set up Python
+        if: steps.gate.outputs.send == 'true'
         uses: actions/setup-python@v5.6.0
         with:
           python-version: "3.12"
           cache: "pip"
 
       - name: Install dependencies
+        if: steps.gate.outputs.send == 'true'
         run: pip install -r requirements.txt
 
       - name: Run morning digest
+        if: steps.gate.outputs.send == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python main.py
-
-      - name: Persist subscriber list
         run: |
-          if ! git diff --quiet -- subscribers.json; then
+          python main.py
+          echo "${{ steps.gate.outputs.today }}" > last_sent.txt
+
+      - name: Persist subscriber list and send date
+        if: steps.gate.outputs.send == 'true'
+        run: |
+          if [ -n "$(git status --porcelain -- subscribers.json last_sent.txt)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add subscribers.json
-            git commit -m "chore: update subscriber list [skip ci]"
+            git add subscribers.json last_sent.txt
+            git commit -m "chore: update subscriber list and send date [skip ci]"
+            git pull --rebase
             git push
           else
-            echo "No subscriber changes."
+            echo "No state changes."
           fi

@@ -70,6 +70,7 @@ def run_morning_digest() -> None:
         print("  Done! Digest sent successfully.")
     else:
         print("  Failed to deliver digest.")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
